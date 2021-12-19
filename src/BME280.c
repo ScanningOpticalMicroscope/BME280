@@ -1,6 +1,7 @@
 #include "BME280.h"
 //------------------------------------------------
 #include <math.h>
+#include <stdint.h>
 //------------------------------------------------
 #define SEALEVELPRESSURE_HPA (1013.25)
 #define SEALEVELPRESSURE_PA (1013250)
@@ -113,27 +114,18 @@ typedef struct
 typedef struct {
   bme280_calibrate_t calibration_data;
   int32_t global_temperature;
-  I2C_HandleTypeDef *hi2c;
-  uint16_t i2c_address;
 } bme280_t;
 //------------------------------------------------
 static bme280_t bme280;
 //------------------------------------------------
 __weak void bme280_write(uint16_t address, uint8_t *data_p, uint16_t length)
 {
-  HAL_I2C_Mem_Write(bme280.hi2c, bme280.i2c_address, address, I2C_MEMADD_SIZE_8BIT, data_p, length, 100);
+
 }
 //------------------------------------------------
 __weak void bme280_read(uint16_t address, uint8_t *data_p, uint16_t length)
 {
-  HAL_I2C_Mem_Read(bme280.hi2c, bme280.i2c_address, address, I2C_MEMADD_SIZE_8BIT, data_p, length, 100);
-}
-//------------------------------------------------
-uint32_t BME280_ReadReg24(uint16_t register_address)
-{
-  uint32_t value = 0;
-  HAL_I2C_Mem_Read(bme280.hi2c, bme280.i2c_address, register_address, I2C_MEMADD_SIZE_8BIT, (uint8_t*)&value, 3, 0x10000);
-  return value;
+
 }
 //------------------------------------------------
 void BME280_ReadStatus(uint8_t *status_p)
@@ -184,7 +176,7 @@ void BME280_SetStandby(uint8_t tsb) {
   bme280_write(BME280_REG_CONFIG, &reg, 1);
 }
 //------------------------------------------------
-  void BME280_SetFilter(uint8_t filter) {
+void BME280_SetFilter(uint8_t filter) {
   uint8_t reg;
   bme280_read(BME280_REG_CONFIG, &reg, 1);
   reg = reg & ~BME280_FILTER_MSK;
@@ -235,7 +227,8 @@ float bme280_get_temperature(void)
   uint32_t temper_raw;
   int32_t val1, val2;
 
-  temper_raw = be24toword(BME280_ReadReg24(BME280_REGISTER_TEMP)) & 0x00FFFFFF;
+  bme280_read(BME280_REGISTER_TEMP, (uint8_t*)&temper_raw, 3);
+  temper_raw = be24toword(temper_raw) & 0x00FFFFFF;
 
   temper_raw >>= 4;
   val1 = ((((temper_raw>>3) - ((int32_t)bme280.calibration_data.dig_T1 <<1))) *
@@ -257,7 +250,8 @@ float bme280_get_pressure(void)
   int64_t val1, val2, p;
   bme280_get_temperature();
 
-  press_raw = be24toword(BME280_ReadReg24(BME280_REGISTER_PRESS)) & 0x00FFFFFF;
+  bme280_read(BME280_REGISTER_PRESS, (uint8_t*)&press_raw, 3);
+  press_raw = be24toword(press_raw) & 0x00FFFFFF;
 
   press_raw >>= 4;
   val1 = ((int64_t) bme280.global_temperature) - 128000;
@@ -305,17 +299,14 @@ float bme280_get_humidity(void)
   return hum_float;
 }
 //------------------------------------------------
-int bme280_init_i2c(I2C_HandleTypeDef *hi2c, uint16_t address)
+int bme280_init(void)
 {
   uint8_t value = 0;
   uint32_t value32 = 0;
 
-  bme280.hi2c = hi2c;
-  bme280.i2c_address = address << 1;
-
   bme280_read(BME280_REG_ID, &value, 1);
   if(value != BME280_ID) {
-    return BME280_INIT_FAIL;
+    return -1;
   }
 
   uint8_t data = BME280_SOFTRESET_VALUE;
@@ -341,5 +332,5 @@ int bme280_init_i2c(I2C_HandleTypeDef *hi2c, uint16_t address)
 
   BME280_SetMode(BME280_MODE_NORMAL);
 
-  return BME280_INIT_OK;
+  return 0;
 }
