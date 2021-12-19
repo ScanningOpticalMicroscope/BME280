@@ -101,7 +101,7 @@ BME280_OSRS_H_x16
 void bme280_set_humidity_oversampling(uint8_t osrs);
 ```
 
-Set temperatur oversampling
+Set temperature oversampling
 ```c
 BME280_OSRS_T_SKIP
 BME280_OSRS_T_x1
