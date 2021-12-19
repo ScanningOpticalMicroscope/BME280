@@ -1,13 +1,9 @@
 #include "BME280.h"
 //------------------------------------------------
 #include <math.h>
-#include <stdint.h>
 //------------------------------------------------
-#define SEALEVELPRESSURE_HPA (1013.25)
-#define SEALEVELPRESSURE_PA (1013250)
-//------------------------------------------------
-#define be16toword(a) ((((a)>>8)&0xff)|(((a)<<8)&0xff00))
-#define be24toword(a) ((((a)>>16)&0x000000ff)|((a)&0x0000ff00)|(((a)<<16)&0x00ff0000))
+#define BME280_be16toword(a) ((((a)>>8)&0xff)|(((a)<<8)&0xff00))
+#define BME280_be24toword(a) ((((a)>>16)&0x000000ff)|((a)&0x0000ff00)|(((a)<<16)&0x00ff0000))
 //------------------------------------------------
 #define BME280_REG_ID           0xD0
 #define BME280_ID               0x60
@@ -41,50 +37,6 @@
 #define BME280_REGISTER_DIG_H4  0xE4
 #define BME280_REGISTER_DIG_H5  0xE5
 #define BME280_REGISTER_DIG_H6  0xE7
-//------------------------------------------------
-#define BME280_STBY_MSK         0xE0
-#define BME280_STBY_0_5         0x00
-#define BME280_STBY_62_5        0x20
-#define BME280_STBY_125         0x40
-#define BME280_STBY_250         0x60
-#define BME280_STBY_500         0x80
-#define BME280_STBY_1000        0xA0
-#define BME280_STBY_10          0xC0
-#define BME280_STBY_20          0xE0
-//------------------------------------------------
-#define BME280_FILTER_MSK       0x1C
-#define BME280_FILTER_OFF       0x00
-#define BME280_FILTER_2         0x04
-#define BME280_FILTER_4         0x08
-#define BME280_FILTER_8         0x0C
-#define BME280_FILTER_16        0x10
-//------------------------------------------------
-#define BME280_OSRS_T_MSK       0xE0
-#define BME280_OSRS_T_SKIP      0x00
-#define BME280_OSRS_T_x1        0x20
-#define BME280_OSRS_T_x2        0x40
-#define BME280_OSRS_T_x4        0x60
-#define BME280_OSRS_T_x8        0x80
-#define BME280_OSRS_T_x16       0xA0
-#define BME280_OSRS_P_MSK       0x1C
-#define BME280_OSRS_P_SKIP      0x00
-#define BME280_OSRS_P_x1        0x04
-#define BME280_OSRS_P_x2        0x08
-#define BME280_OSRS_P_x4        0x0C
-#define BME280_OSRS_P_x8        0x10
-#define BME280_OSRS_P_x16       0x14
-#define BME280_OSRS_H_MSK       0x07
-#define BME280_OSRS_H_SKIP      0x00
-#define BME280_OSRS_H_x1        0x01
-#define BME280_OSRS_H_x2        0x02
-#define BME280_OSRS_H_x4        0x03
-#define BME280_OSRS_H_x8        0x04
-#define BME280_OSRS_H_x16       0x05
-//------------------------------------------------
-#define BME280_MODE_MSK         0x03
-#define BME280_MODE_SLEEP       0x00
-#define BME280_MODE_FORCED      0x01
-#define BME280_MODE_NORMAL      0x03
 //------------------------------------------------
 typedef struct
 {
@@ -128,13 +80,13 @@ __weak void bme280_read(uint16_t address, uint8_t *data_p, uint16_t length)
 
 }
 //------------------------------------------------
-void BME280_ReadStatus(uint8_t *status_p)
+static void bme280_read_status(uint8_t *status_p)
 {
   bme280_read(BME280_REGISTER_STATUS, status_p, 1);
   *status_p = *status_p & 0x09;
 }
 //------------------------------------------------
-void BME280_ReadCoefficients(void)
+static void bme280_read_coefficients(void)
 {
   uint8_t temp1 = 0, temp2 = 0;
 
@@ -168,15 +120,15 @@ void BME280_ReadCoefficients(void)
   bme280.calibration_data.dig_H6 = (int8_t)temp1;
 }
 //------------------------------------------------
-void BME280_SetStandby(uint8_t tsb) {
+void bme280_set_standby(uint8_t standby_duration) {
   uint8_t reg;
   bme280_read(BME280_REG_CONFIG, &reg, 1);
   reg = reg & ~BME280_STBY_MSK;
-  reg |= tsb & BME280_STBY_MSK;
+  reg |= standby_duration & BME280_STBY_MSK;
   bme280_write(BME280_REG_CONFIG, &reg, 1);
 }
 //------------------------------------------------
-void BME280_SetFilter(uint8_t filter) {
+void bme280_set_filter(uint8_t filter) {
   uint8_t reg;
   bme280_read(BME280_REG_CONFIG, &reg, 1);
   reg = reg & ~BME280_FILTER_MSK;
@@ -184,7 +136,7 @@ void BME280_SetFilter(uint8_t filter) {
   bme280_write(BME280_REG_CONFIG, &reg, 1);
 }
 //------------------------------------------------
-void BME280_SetOversamplingTemper(uint8_t osrs)
+void bme280_set_temperature_oversampling(uint8_t osrs)
 {
   uint8_t reg;
   bme280_read(BME280_REG_CTRL_MEAS, &reg, 1);
@@ -193,7 +145,7 @@ void BME280_SetOversamplingTemper(uint8_t osrs)
   bme280_write(BME280_REG_CTRL_MEAS, &reg, 1);
 }
 //------------------------------------------------
-void BME280_SetOversamplingPressure(uint8_t osrs)
+void bme280_set_pressure_oversampling(uint8_t osrs)
 {
   uint8_t reg;
   bme280_read(BME280_REG_CTRL_MEAS, &reg, 1);
@@ -202,7 +154,7 @@ void BME280_SetOversamplingPressure(uint8_t osrs)
   bme280_write(BME280_REG_CTRL_MEAS, &reg, 1);
 }
 //------------------------------------------------
-void BME280_SetOversamplingHum(uint8_t osrs)
+void bme280_set_humidity_oversampling(uint8_t osrs)
 {
   uint8_t reg;
   bme280_read(BME280_REG_CTRL_HUM, &reg, 1);
@@ -213,7 +165,7 @@ void BME280_SetOversamplingHum(uint8_t osrs)
   bme280_write(BME280_REG_CTRL_MEAS, &reg, 1);
 }
 //------------------------------------------------
-void BME280_SetMode(uint8_t mode) {
+void bme280_set_mode(uint8_t mode) {
   uint8_t reg;
   bme280_read(BME280_REG_CTRL_MEAS, &reg, 1);
   reg = reg & ~BME280_MODE_MSK;
@@ -228,7 +180,7 @@ float bme280_get_temperature(void)
   int32_t val1, val2;
 
   bme280_read(BME280_REGISTER_TEMP, (uint8_t*)&temper_raw, 3);
-  temper_raw = be24toword(temper_raw) & 0x00FFFFFF;
+  temper_raw = BME280_be24toword(temper_raw) & 0x00FFFFFF;
 
   temper_raw >>= 4;
   val1 = ((((temper_raw>>3) - ((int32_t)bme280.calibration_data.dig_T1 <<1))) *
@@ -251,7 +203,7 @@ float bme280_get_pressure(void)
   bme280_get_temperature();
 
   bme280_read(BME280_REGISTER_PRESS, (uint8_t*)&press_raw, 3);
-  press_raw = be24toword(press_raw) & 0x00FFFFFF;
+  press_raw = BME280_be24toword(press_raw) & 0x00FFFFFF;
 
   press_raw >>= 4;
   val1 = ((int64_t) bme280.global_temperature) - 128000;
@@ -281,7 +233,7 @@ float bme280_get_humidity(void)
   bme280_get_temperature();
 
   bme280_read(BME280_REGISTER_HUM, (uint8_t*)&hum_raw, 2);
-  hum_raw = be16toword(hum_raw);
+  hum_raw = BME280_be16toword(hum_raw);
 
   hum_raw_sign = ((int32_t)hum_raw)&0x0000FFFF;
   v_x1_u32r = (bme280.global_temperature - ((int32_t)76800));
@@ -314,15 +266,15 @@ int bme280_init(void)
 
   uint8_t status = 0;
   do {
-    BME280_ReadStatus(&status);
+    bme280_read_status(&status);
   } while (status & BME280_STATUS_IM_UPDATE);
 
-  BME280_ReadCoefficients();
-  BME280_SetStandby(BME280_STBY_1000);
-  BME280_SetFilter(BME280_FILTER_4);
-  BME280_SetOversamplingTemper(BME280_OSRS_T_x4);
-  BME280_SetOversamplingPressure(BME280_OSRS_P_x2);
-  BME280_SetOversamplingHum(BME280_OSRS_H_x1);
+  bme280_read_coefficients();
+  bme280_set_standby(BME280_STBY_1000);
+  bme280_set_filter(BME280_FILTER_4);
+  bme280_set_temperature_oversampling(BME280_OSRS_T_x4);
+  bme280_set_pressure_oversampling(BME280_OSRS_P_x2);
+  bme280_set_humidity_oversampling(BME280_OSRS_H_x1);
 
   bme280_read(BME280_REG_CTRL_MEAS, (uint8_t*)&value32, 1);
 
@@ -330,7 +282,7 @@ int bme280_init(void)
   bme280_read(BME280_REG_CTRL_HUM, &temp, 1);
   value32 |= temp << 8;
 
-  BME280_SetMode(BME280_MODE_NORMAL);
+  bme280_set_mode(BME280_MODE_NORMAL);
 
   return 0;
 }
