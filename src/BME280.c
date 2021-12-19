@@ -119,16 +119,14 @@ typedef struct {
 //------------------------------------------------
 static bme280_t bme280;
 //------------------------------------------------
-void BME280_WriteReg(uint16_t register_address, uint8_t value)
+__weak void bme280_write(uint16_t address, uint8_t *data_p, uint16_t length)
 {
-  HAL_I2C_Mem_Write(bme280.hi2c, bme280.i2c_address, register_address, I2C_MEMADD_SIZE_8BIT, &value, 1, 100);
+  HAL_I2C_Mem_Write(bme280.hi2c, bme280.i2c_address, address, I2C_MEMADD_SIZE_8BIT, data_p, length, 100);
 }
 //------------------------------------------------
-uint8_t BME280_ReadReg(uint16_t register_address)
+__weak void bme280_read(uint16_t address, uint8_t *data_p, uint16_t length)
 {
-  uint8_t value = 0;
-  HAL_I2C_Mem_Read(bme280.hi2c, bme280.i2c_address, register_address, I2C_MEMADD_SIZE_8BIT, &value, 1, 100);
-  return value;
+  HAL_I2C_Mem_Read(bme280.hi2c, bme280.i2c_address, address, I2C_MEMADD_SIZE_8BIT, data_p, length, 100);
 }
 //------------------------------------------------
 uint16_t BME280_ReadReg16(uint16_t register_address)
@@ -145,14 +143,16 @@ uint32_t BME280_ReadReg24(uint16_t register_address)
   return value;
 }
 //------------------------------------------------
-uint8_t BME280_ReadStatus(void)
+void BME280_ReadStatus(uint8_t *status_p)
 {
-  uint8_t res = BME280_ReadReg(BME280_REGISTER_STATUS)&0x09;
-  return res;
+  bme280_read(BME280_REGISTER_STATUS, status_p, 1);
+  *status_p = *status_p & 0x09;
 }
 //------------------------------------------------
 void BME280_ReadCoefficients(void)
 {
+  uint8_t temp1 = 0, temp2 = 0;
+
   bme280.calibration_data.dig_T1 = BME280_ReadReg16(BME280_REGISTER_DIG_T1);
   bme280.calibration_data.dig_T2 = BME280_ReadReg16(BME280_REGISTER_DIG_T2);
   bme280.calibration_data.dig_T3 = BME280_ReadReg16(BME280_REGISTER_DIG_T3);
@@ -167,59 +167,73 @@ void BME280_ReadCoefficients(void)
   bme280.calibration_data.dig_P8 = BME280_ReadReg16(BME280_REGISTER_DIG_P8);
   bme280.calibration_data.dig_P9 = BME280_ReadReg16(BME280_REGISTER_DIG_P9);
 
-  bme280.calibration_data.dig_H1 = BME280_ReadReg(BME280_REGISTER_DIG_H1);
+  bme280_read(BME280_REGISTER_DIG_H1, &bme280.calibration_data.dig_H1, 1);
   bme280.calibration_data.dig_H2 = BME280_ReadReg16(BME280_REGISTER_DIG_H2);
-  bme280.calibration_data.dig_H3 = BME280_ReadReg(BME280_REGISTER_DIG_H3);
-  bme280.calibration_data.dig_H4 = (BME280_ReadReg(BME280_REGISTER_DIG_H4) << 4) | (BME280_ReadReg(BME280_REGISTER_DIG_H4+1) & 0xF);
-  bme280.calibration_data.dig_H5 = (BME280_ReadReg(BME280_REGISTER_DIG_H5+1) << 4) | (BME280_ReadReg(BME280_REGISTER_DIG_H5) >> 4);
-  bme280.calibration_data.dig_H6 = (int8_t)BME280_ReadReg(BME280_REGISTER_DIG_H6);
+  bme280_read(BME280_REGISTER_DIG_H3, &bme280.calibration_data.dig_H3, 1);
+
+  bme280_read(BME280_REGISTER_DIG_H4 + 0, &temp1, 1);
+  bme280_read(BME280_REGISTER_DIG_H4 + 1, &temp2, 1);
+  bme280.calibration_data.dig_H4 = (temp1 << 4) | (temp2 & 0xF);
+
+  bme280_read(BME280_REGISTER_DIG_H5 + 1, &temp1, 1);
+  bme280_read(BME280_REGISTER_DIG_H5 + 0, &temp2, 1);
+  bme280.calibration_data.dig_H5 = (temp1 << 4) | (temp2 >> 4);
+
+  bme280_read(BME280_REGISTER_DIG_H6, &temp1, 1);
+  bme280.calibration_data.dig_H6 = (int8_t)temp1;
 }
 //------------------------------------------------
 void BME280_SetStandby(uint8_t tsb) {
   uint8_t reg;
-  reg = BME280_ReadReg(BME280_REG_CONFIG) & ~BME280_STBY_MSK;
+  bme280_read(BME280_REG_CONFIG, &reg, 1);
+  reg = reg & ~BME280_STBY_MSK;
   reg |= tsb & BME280_STBY_MSK;
-  BME280_WriteReg(BME280_REG_CONFIG,reg);
+  bme280_write(BME280_REG_CONFIG, &reg, 1);
 }
 //------------------------------------------------
   void BME280_SetFilter(uint8_t filter) {
   uint8_t reg;
-  reg = BME280_ReadReg(BME280_REG_CONFIG) & ~BME280_FILTER_MSK;
+  bme280_read(BME280_REG_CONFIG, &reg, 1);
+  reg = reg & ~BME280_FILTER_MSK;
   reg |= filter & BME280_FILTER_MSK;
-  BME280_WriteReg(BME280_REG_CONFIG,reg);
+  bme280_write(BME280_REG_CONFIG, &reg, 1);
 }
 //------------------------------------------------
 void BME280_SetOversamplingTemper(uint8_t osrs)
 {
   uint8_t reg;
-  reg = BME280_ReadReg(BME280_REG_CTRL_MEAS) & ~BME280_OSRS_T_MSK;
+  bme280_read(BME280_REG_CTRL_MEAS, &reg, 1);
+  reg = reg & ~BME280_OSRS_T_MSK;
   reg |= osrs & BME280_OSRS_T_MSK;
-  BME280_WriteReg(BME280_REG_CTRL_MEAS,reg);
+  bme280_write(BME280_REG_CTRL_MEAS, &reg, 1);
 }
 //------------------------------------------------
 void BME280_SetOversamplingPressure(uint8_t osrs)
 {
   uint8_t reg;
-  reg = BME280_ReadReg(BME280_REG_CTRL_MEAS) & ~BME280_OSRS_P_MSK;
+  bme280_read(BME280_REG_CTRL_MEAS, &reg, 1);
+  reg = reg & ~BME280_OSRS_P_MSK;
   reg |= osrs & BME280_OSRS_P_MSK;
-  BME280_WriteReg(BME280_REG_CTRL_MEAS,reg);
+  bme280_write(BME280_REG_CTRL_MEAS, &reg, 1);
 }
 //------------------------------------------------
 void BME280_SetOversamplingHum(uint8_t osrs)
 {
   uint8_t reg;
-  reg = BME280_ReadReg(BME280_REG_CTRL_HUM) & ~BME280_OSRS_H_MSK;
+  bme280_read(BME280_REG_CTRL_HUM, &reg, 1);
+  reg = reg & ~BME280_OSRS_H_MSK;
   reg |= osrs & BME280_OSRS_H_MSK;
-  BME280_WriteReg(BME280_REG_CTRL_HUM,reg);
-  reg = BME280_ReadReg(BME280_REG_CTRL_MEAS);
-  BME280_WriteReg(BME280_REG_CTRL_MEAS,reg);
+  bme280_write(BME280_REG_CTRL_HUM, &reg, 1);
+  bme280_read(BME280_REG_CTRL_MEAS, &reg, 1);
+  bme280_write(BME280_REG_CTRL_MEAS, &reg, 1);
 }
 //------------------------------------------------
 void BME280_SetMode(uint8_t mode) {
   uint8_t reg;
-  reg = BME280_ReadReg(BME280_REG_CTRL_MEAS) & ~BME280_MODE_MSK;
+  bme280_read(BME280_REG_CTRL_MEAS, &reg, 1);
+  reg = reg & ~BME280_MODE_MSK;
   reg |= mode & BME280_MODE_MSK;
-  BME280_WriteReg(BME280_REG_CTRL_MEAS,reg);
+  bme280_write(BME280_REG_CTRL_MEAS, &reg, 1);
 }
 //------------------------------------------------
 float bme280_get_temperature(void)
@@ -305,14 +319,18 @@ int bme280_init_i2c(I2C_HandleTypeDef *hi2c, uint16_t address)
   bme280.hi2c = hi2c;
   bme280.i2c_address = address << 1;
 
-  value = BME280_ReadReg(BME280_REG_ID);
+  bme280_read(BME280_REG_ID, &value, 1);
   if(value != BME280_ID) {
     return BME280_INIT_FAIL;
   }
 
-  BME280_WriteReg(BME280_REG_SOFTRESET,BME280_SOFTRESET_VALUE);
+  uint8_t data = BME280_SOFTRESET_VALUE;
+  bme280_write(BME280_REG_SOFTRESET, &data, 1);
 
-  while (BME280_ReadStatus() & BME280_STATUS_IM_UPDATE);
+  uint8_t status = 0;
+  do {
+    BME280_ReadStatus(&status);
+  } while (status & BME280_STATUS_IM_UPDATE);
 
   BME280_ReadCoefficients();
   BME280_SetStandby(BME280_STBY_1000);
@@ -321,8 +339,11 @@ int bme280_init_i2c(I2C_HandleTypeDef *hi2c, uint16_t address)
   BME280_SetOversamplingPressure(BME280_OSRS_P_x2);
   BME280_SetOversamplingHum(BME280_OSRS_H_x1);
 
-  value32 = BME280_ReadReg(BME280_REG_CTRL_MEAS);
-  value32 |= BME280_ReadReg(BME280_REG_CTRL_HUM) << 8;
+  bme280_read(BME280_REG_CTRL_MEAS, (uint8_t*)&value32, 1);
+
+  uint8_t temp = 0;
+  bme280_read(BME280_REG_CTRL_HUM, &temp, 1);
+  value32 |= temp << 8;
 
   BME280_SetMode(BME280_MODE_NORMAL);
 
