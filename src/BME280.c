@@ -77,12 +77,12 @@ typedef struct {
 //------------------------------------------------
 static bme280_t bme280;
 //------------------------------------------------
-__weak void bme280_write(uint16_t address, uint8_t *data_p, uint16_t length)
+__weak void bme280_write(uint16_t memory_address, uint8_t *data_p, uint16_t length)
 {
 
 }
 //------------------------------------------------
-__weak void bme280_read(uint16_t address, uint8_t *data_p, uint16_t length)
+__weak void bme280_read(uint16_t memory_address, uint8_t *data_p, uint16_t length)
 {
 
 }
