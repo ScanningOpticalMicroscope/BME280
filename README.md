@@ -20,7 +20,7 @@ void bme280_write(uint16_t address, uint8_t *data_p, uint16_t length)
 {
   HAL_I2C_Mem_Write(&hi2c1, 0x76 << 1, address, I2C_MEMADD_SIZE_8BIT, data_p, length, 100);
 }
-//------------------------------------------------
+
 void bme280_read(uint16_t address, uint8_t *data_p, uint16_t length)
 {
   HAL_I2C_Mem_Read(&hi2c1, 0x76 << 1, address, I2C_MEMADD_SIZE_8BIT, data_p, length, 100);
