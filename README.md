@@ -10,10 +10,7 @@ Add initializing of the BME280
 ```c
 int result = bme280_init();
   if (result != 0) {
-    while(1) {
-      HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-      HAL_Delay(200);
-    }
+    //Error
   }
 ```
 
