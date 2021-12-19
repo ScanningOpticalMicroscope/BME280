@@ -30,6 +30,6 @@ void bme280_read(uint16_t address, uint8_t *data_p, uint16_t length)
 Read data from the BME280
 ```c
 float temperature = bme280_get_temperature();
-float humudity = bme280_get_humidity();
-float pressure = bme280_get_pressure();
+float humudity    = bme280_get_humidity();
+float pressure    = bme280_get_pressure();
 ```
