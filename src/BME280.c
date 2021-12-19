@@ -5,6 +5,13 @@
 #define BME280_be16toword(a) ((((a)>>8)&0xff)|(((a)<<8)&0xff00))
 #define BME280_be24toword(a) ((((a)>>16)&0x000000ff)|((a)&0x0000ff00)|(((a)<<16)&0x00ff0000))
 //------------------------------------------------
+#define BME280_MODE_MSK         0x03
+#define BME280_FILTER_MSK       0x1C
+#define BME280_STBY_MSK         0xE0
+#define BME280_OSRS_T_MSK       0xE0
+#define BME280_OSRS_P_MSK       0x1C
+#define BME280_OSRS_H_MSK       0x07
+//------------------------------------------------
 #define BME280_REG_ID           0xD0
 #define BME280_ID               0x60
 #define BME280_REG_SOFTRESET    0xE0
