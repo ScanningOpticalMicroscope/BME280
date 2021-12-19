@@ -9,9 +9,9 @@ Include header file:
 Add initializing of the BME280
 ```c
 int result = bme280_init();
-  if (result != 0) {
-    //Error
-  }
+if (result != 0) {
+  //Error
+}
 ```
 
 Implement the communication (HAL I2C example below)
