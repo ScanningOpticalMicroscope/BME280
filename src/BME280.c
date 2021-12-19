@@ -129,13 +129,6 @@ __weak void bme280_read(uint16_t address, uint8_t *data_p, uint16_t length)
   HAL_I2C_Mem_Read(bme280.hi2c, bme280.i2c_address, address, I2C_MEMADD_SIZE_8BIT, data_p, length, 100);
 }
 //------------------------------------------------
-uint16_t BME280_ReadReg16(uint16_t register_address)
-{
-  uint16_t value = 0;
-  HAL_I2C_Mem_Read(bme280.hi2c, bme280.i2c_address, register_address, I2C_MEMADD_SIZE_8BIT, (uint8_t*)&value, 2, 100);
-  return value;
-}
-//------------------------------------------------
 uint32_t BME280_ReadReg24(uint16_t register_address)
 {
   uint32_t value = 0;
@@ -153,22 +146,22 @@ void BME280_ReadCoefficients(void)
 {
   uint8_t temp1 = 0, temp2 = 0;
 
-  bme280.calibration_data.dig_T1 = BME280_ReadReg16(BME280_REGISTER_DIG_T1);
-  bme280.calibration_data.dig_T2 = BME280_ReadReg16(BME280_REGISTER_DIG_T2);
-  bme280.calibration_data.dig_T3 = BME280_ReadReg16(BME280_REGISTER_DIG_T3);
+  bme280_read(BME280_REGISTER_DIG_T1, (uint8_t*)&bme280.calibration_data.dig_T1, 2);
+  bme280_read(BME280_REGISTER_DIG_T2, (uint8_t*)&bme280.calibration_data.dig_T2, 2);
+  bme280_read(BME280_REGISTER_DIG_T3, (uint8_t*)&bme280.calibration_data.dig_T3, 2);
 
-  bme280.calibration_data.dig_P1 = BME280_ReadReg16(BME280_REGISTER_DIG_P1);
-  bme280.calibration_data.dig_P2 = BME280_ReadReg16(BME280_REGISTER_DIG_P2);
-  bme280.calibration_data.dig_P3 = BME280_ReadReg16(BME280_REGISTER_DIG_P3);
-  bme280.calibration_data.dig_P4 = BME280_ReadReg16(BME280_REGISTER_DIG_P4);
-  bme280.calibration_data.dig_P5 = BME280_ReadReg16(BME280_REGISTER_DIG_P5);
-  bme280.calibration_data.dig_P6 = BME280_ReadReg16(BME280_REGISTER_DIG_P6);
-  bme280.calibration_data.dig_P7 = BME280_ReadReg16(BME280_REGISTER_DIG_P7);
-  bme280.calibration_data.dig_P8 = BME280_ReadReg16(BME280_REGISTER_DIG_P8);
-  bme280.calibration_data.dig_P9 = BME280_ReadReg16(BME280_REGISTER_DIG_P9);
+  bme280_read(BME280_REGISTER_DIG_P1, (uint8_t*)&bme280.calibration_data.dig_P1, 2);
+  bme280_read(BME280_REGISTER_DIG_P2, (uint8_t*)&bme280.calibration_data.dig_P2, 2);
+  bme280_read(BME280_REGISTER_DIG_P3, (uint8_t*)&bme280.calibration_data.dig_P3, 2);
+  bme280_read(BME280_REGISTER_DIG_P4, (uint8_t*)&bme280.calibration_data.dig_P4, 2);
+  bme280_read(BME280_REGISTER_DIG_P5, (uint8_t*)&bme280.calibration_data.dig_P5, 2);
+  bme280_read(BME280_REGISTER_DIG_P6, (uint8_t*)&bme280.calibration_data.dig_P6, 2);
+  bme280_read(BME280_REGISTER_DIG_P7, (uint8_t*)&bme280.calibration_data.dig_P7, 2);
+  bme280_read(BME280_REGISTER_DIG_P8, (uint8_t*)&bme280.calibration_data.dig_P8, 2);
+  bme280_read(BME280_REGISTER_DIG_P9, (uint8_t*)&bme280.calibration_data.dig_P9, 2);
 
   bme280_read(BME280_REGISTER_DIG_H1, &bme280.calibration_data.dig_H1, 1);
-  bme280.calibration_data.dig_H2 = BME280_ReadReg16(BME280_REGISTER_DIG_H2);
+  bme280_read(BME280_REGISTER_DIG_H2, (uint8_t*)&bme280.calibration_data.dig_H2, 2);
   bme280_read(BME280_REGISTER_DIG_H3, &bme280.calibration_data.dig_H3, 1);
 
   bme280_read(BME280_REGISTER_DIG_H4 + 0, &temp1, 1);
@@ -289,11 +282,12 @@ float bme280_get_pressure(void)
 float bme280_get_humidity(void)
 {
   float hum_float = 0.0f;
-  int16_t hum_raw;
+  int16_t hum_raw = 0;
   int32_t hum_raw_sign, v_x1_u32r;
   bme280_get_temperature();
 
-  hum_raw = be16toword(BME280_ReadReg16(BME280_REGISTER_HUM));
+  bme280_read(BME280_REGISTER_HUM, (uint8_t*)&hum_raw, 2);
+  hum_raw = be16toword(hum_raw);
 
   hum_raw_sign = ((int32_t)hum_raw)&0x0000FFFF;
   v_x1_u32r = (bme280.global_temperature - ((int32_t)76800));
